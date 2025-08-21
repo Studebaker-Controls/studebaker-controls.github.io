@@ -1,0 +1,142 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <title>Airflow (Area) & K Factor Calculator</title>
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <style>
+    :root{
+      --bg:#0b2434;--panel:#0f2e43;--border:#173a52;--text:#e8f1f8;--muted:#a8c1d4;--brand:#2b8cff;--success:#2aa66e;--shadow:0 8px 20px rgba(0,0,0,.35);--radius:14px;
+    }
+    *{box-sizing:border-box;margin:0;padding:0}
+    body{font-family:system-ui,-apple-system,Segoe UI,Roboto,Ubuntu,"Helvetica Neue",Arial,sans-serif;background:var(--bg);color:var(--text);line-height:1.4}
+    .wrap{max-width:800px;margin:20px auto;padding:0 16px}
+    .card{margin-top:18px;background:var(--panel);border:1px solid var(--border);border-radius:var(--radius);box-shadow:var(--shadow);overflow:hidden}
+    .card-h{padding:14px 16px;border-bottom:1px solid var(--border);background:rgba(255,255,255,0.03)}
+    .card-h h3{font-size:1.1rem}
+    .card-c{padding:16px}
+    .grid{display:grid;grid-template-columns:repeat(auto-fit,minmax(220px,1fr));gap:12px}
+    label{display:block;margin-bottom:6px;font-size:.9rem;color:var(--muted)}
+    input[type="number"]{width:100%;padding:10px 12px;border-radius:10px;border:1px solid var(--border);background:#10293d;color:var(--text);font-size:1rem}
+    .result{margin-top:10px;padding:10px 12px;background:#0d2a41;border:1px solid var(--border);border-radius:10px;color:var(--text);font-size:.95rem}
+    .row{display:flex;gap:12px;align-items:center;flex-wrap:wrap}
+    .row>div{flex:1;min-width:100px}
+    .info-box{margin-top:18px;background:#0d2a41;border:1px solid var(--border);border-radius:var(--radius);padding:14px;font-size:.9rem;color:var(--muted)}
+  </style>
+</head>
+<body>
+  <main class="wrap">
+    <!-- ROUND DUCT -->
+    <section class="card">
+      <div class="card-h">
+        <h3>Round Duct — Flow Area</h3>
+      </div>
+      <div class="card-c">
+        <div class="grid">
+          <div>
+            <label for="diameter">Diameter (in)</label>
+            <input type="number" id="diameter" step="any" placeholder="e.g., 10">
+          </div>
+        </div>
+        <div class="result" id="areaResult"></div>
+      </div>
+    </section>
+
+    <!-- RECTANGULAR DUCT -->
+    <section class="card">
+      <div class="card-h">
+        <h3>Rectangular Duct — Flow Area</h3>
+      </div>
+      <div class="card-c">
+        <div class="grid">
+          <div>
+            <label for="rectW">Width (in)</label>
+            <input type="number" id="rectW" step="any" placeholder="e.g., 12">
+          </div>
+          <div>
+            <label for="rectH">Height (in)</label>
+            <input type="number" id="rectH" step="any" placeholder="e.g., 8">
+          </div>
+        </div>
+        <div class="result" id="rectAreaResult"></div>
+      </div>
+    </section>
+
+    <!-- K FACTOR -->
+    <section class="card">
+      <div class="card-h">
+        <h3>K Factor Tuning</h3>
+      </div>
+      <div class="card-c">
+        <div class="grid">
+          <div>
+            <label for="our">Our Reading (CFM)</label>
+            <input type="number" id="our" step="any" placeholder="e.g., 655">
+          </div>
+          <div>
+            <label for="their">Their Reading (CFM)</label>
+            <input type="number" id="their" step="any" placeholder="e.g., 739">
+          </div>
+          <div>
+            <label for="currentK">Current K</label>
+            <input type="number" id="currentK" step="any" placeholder="e.g., 1200">
+          </div>
+        </div>
+        <div class="result" id="kResult"></div>
+      </div>
+    </section>
+
+    <div class="info-box">
+      <strong>Formulas Used:</strong><br>
+      • Round: A = π × (D ÷ 2)² ÷ 144 — Flow area in square feet (D in inches)<br>
+      • Rectangular: A = (W × H) ÷ 144 — W & H in inches, area in square feet<br>
+      • New K = Current K × (Their ÷ Our)<br>
+      • Offset = New K − Current K
+    </div>
+  </main>
+
+  <script>
+    function fmt(n, d=2){return isFinite(n)?Number(n).toFixed(d):'';}
+
+    // Round duct
+    function calcArea(){
+      const d=parseFloat(document.getElementById('diameter').value),out=document.getElementById('areaResult');
+      if(d>0){
+        const area=Math.PI*Math.pow(d/2,2)/144;
+        out.textContent=`Flow Area: ${fmt(area,2)} sq ft`;
+        return area;
+      }
+      out.textContent='Enter a valid diameter.';
+      return NaN;
+    }
+
+    // Rectangular duct
+    function calcRectArea(){
+      const w=parseFloat(document.getElementById('rectW').value);
+      const h=parseFloat(document.getElementById('rectH').value);
+      const out=document.getElementById('rectAreaResult');
+      if(w>0 && h>0){
+        const area=(w*h)/144;
+        out.textContent=`Flow Area: ${fmt(area,2)} sq ft`;
+        return area;
+      }
+      out.textContent='Enter valid width & height.';
+      return NaN;
+    }
+
+    // K-factor
+    function calcK(){
+      const our=parseFloat(document.getElementById('our').value),their=parseFloat(document.getElementById('their').value),currentK=parseFloat(document.getElementById('currentK').value),res=document.getElementById('kResult');
+      if(our>0 && their>0 && currentK>0){
+        const newK=currentK*(their/our),offset=newK-currentK;
+        res.innerHTML=`<div class="row"><div><b>New K:</b> ${fmt(newK,1)}</div><div><b>Offset:</b> ${fmt(offset,1)} CFM</div></div>`;
+      } else res.textContent='Enter valid values.';
+    }
+
+    // Live bindings
+    document.getElementById('diameter').addEventListener('input',calcArea);
+    ['rectW','rectH'].forEach(id=>document.getElementById(id).addEventListener('input',calcRectArea));
+    ['our','their','currentK'].forEach(id=>document.getElementById(id).addEventListener('input',calcK));
+  </script>
+</body>
+</html>
