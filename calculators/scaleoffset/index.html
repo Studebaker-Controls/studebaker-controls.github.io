@@ -25,6 +25,9 @@
       display: grid;
       place-items: center;
       padding: 24px;
+      -webkit-font-smoothing: antialiased;
+      -moz-osx-font-smoothing: grayscale;
+      -webkit-tap-highlight-color: transparent;
     }
     .app {
       width: min(920px, 100%);
@@ -39,8 +42,9 @@
       font-size: clamp(20px, 3.2vw, 28px);
       line-height: 1.15;
       margin: 0;
+      letter-spacing: .2px;
     }
-    header p { margin: 6px 0 0; color: var(--muted); font-size: 14px; }
+    header p { margin: 6px 0 0; color: var(--muted); font-size: 14px; display:flex; flex-wrap: wrap; gap:8px; }
 
     .grid {
       display: grid;
@@ -56,21 +60,19 @@
     }
     .span-6 { grid-column: span 6; }
     .span-12 { grid-column: span 12; }
-    @media (max-width: 720px) {
-      .span-6 { grid-column: span 12; }
-    }
 
     label { display: block; font-size: 12px; color: var(--muted); margin-bottom: 6px; }
     .row { display: grid; grid-template-columns: 1fr 1fr; gap: 12px; }
 
-    input[type="number"], select {
+    input[type="number"], select, .styled-output {
       width: 100%;
-      padding: 12px 12px;
-      border-radius: 10px;
+      padding: 14px 14px;
+      border-radius: 12px;
       border: 1px solid var(--border);
       background: #0f1430;
       color: var(--ink);
-      font-size: 16px;
+      font-size: 17px; /* Larger tap target text */
+      line-height: 1.25;
     }
 
     .controls { display: flex; flex-wrap: wrap; gap: 8px; align-items: center; }
@@ -79,11 +81,12 @@
       border: 1px solid var(--border);
       background: linear-gradient(180deg, #2a345f, #1a2346);
       color: var(--ink);
-      padding: 10px 14px;
-      border-radius: 10px;
+      padding: 12px 14px;
+      border-radius: 12px;
       font-weight: 600;
       cursor: pointer;
       transition: transform .06s ease, filter .2s ease;
+      touch-action: manipulation;
     }
     button:hover { filter: brightness(1.1); }
     button:active { transform: translateY(1px); }
@@ -94,21 +97,39 @@
     .result-box {
       background: #0f1430;
       border: 1px solid var(--border);
-      border-radius: 10px;
+      border-radius: 12px;
       padding: 12px;
       min-height: 64px;
       display: grid;
       gap: 4px;
     }
     .result-title { font-size: 12px; color: var(--muted); }
-    .result-value { font-size: 20px; font-variant-numeric: tabular-nums; }
+    .result-value { font-size: clamp(18px, 5vw, 20px); font-variant-numeric: tabular-nums; word-break: break-word; }
     .ok { color: var(--ok); }
     .err { color: var(--danger); }
 
     .equation { font-family: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, "Liberation Mono", "Courier New", monospace; }
 
-    .footer { padding: 12px 24px 22px; color: var(--muted); font-size: 12px; text-align: center; }
-    .badge { display:inline-block; padding:.2em .5em; border:1px solid var(--border); border-radius: 999px; margin-left:.4em; }
+    .badge { display:inline-block; padding:.2em .5em; border:1px solid var(--border); border-radius: 999px; }
+
+    /* --- Mobile tweaks --- */
+    @media (max-width: 720px) {
+      body { padding: 16px; }
+      .grid { padding: 16px; gap: 12px; }
+      .row { grid-template-columns: 1fr; }
+      .span-6 { grid-column: span 12; }
+      .controls { gap: 10px; }
+      .controls > button { flex: 1 1 auto; }
+      .controls > label { width: 100%; order: 2; }
+      #decimals { flex: 1 1 auto; }
+      header p { font-size: 13px; }
+    }
+
+    @media (max-width: 420px) {
+      header { padding-top: 16px; }
+      .card { padding: 14px; }
+      .result-value { font-size: clamp(16px, 6vw, 20px); }
+    }
   </style>
 </head>
 <body>
@@ -188,7 +209,9 @@
           </div>
           <div>
             <label for="ytest">Result y</label>
-            <input id="ytest" type="text" readonly aria-readonly="true" />
+            <div class="result-box">
+              <div class="result-value" id="ytest" aria-readonly="true">—</div>
+            </div>
           </div>
         </div>
         <div class="controls">
@@ -206,8 +229,6 @@
         </ul>
       </div>
     </section>
-
-    <div class="footer">Built for engineers & technicians • Keyboard friendly • No data leaves your browser</div>
   </main>
 
   <script>
@@ -227,7 +248,6 @@
     const fmt = (n) => {
       const d = Number(decSel.value || 6);
       if (!Number.isFinite(n)) return '—';
-      // Use toFixed for stable decimals; strip trailing zeros
       return n.toFixed(d).replace(/\.0+$/,'').replace(/(\.\d*?)0+$/,'$1');
     };
 
@@ -265,10 +285,10 @@
       const { m, b } = compute();
       const x = parse(xtest);
       if (!Number.isFinite(m) || !Number.isFinite(b) || Number.isNaN(x)) {
-        ytest.value = '';
+        ytest.textContent = '—';
         return;
       }
-      ytest.value = fmt(m * x + b);
+      ytest.textContent = fmt(m * x + b);
     }
 
     function copyResults() {
@@ -303,16 +323,15 @@
     function resetAll() {
       for (const el of [x1El,x2El,y1El,y2El,xtest]) el.value = '';
       setOutputs(null, null);
-      ytest.value = '';
+      ytest.textContent = '—';
       msgEl.textContent = '';
       decSel.value = '6';
       x1El.focus();
     }
 
-    // Events
     $('#calc').addEventListener('click', compute);
     $('#apply').addEventListener('click', applyTest);
-    $('#clearTest').addEventListener('click', () => { xtest.value = ''; ytest.value = ''; });
+    $('#clearTest').addEventListener('click', () => { xtest.value = ''; ytest.textContent = '—'; });
     $('#example').addEventListener('click', useExample);
     $('#reset').addEventListener('click', resetAll);
     decSel.addEventListener('change', compute);
@@ -327,7 +346,6 @@
 
     copyBtn.addEventListener('click', copyResults);
 
-    // Persist last session (optional, lightweight)
     const KEY = 'scale-offset-calc:v1';
     function saveState() {
       const state = { x1: x1El.value, x2: x2El.value, y1: y1El.value, y2: y2El.value, d: decSel.value };
