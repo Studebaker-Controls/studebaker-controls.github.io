@@ -1,0 +1,351 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>Scale & Offset Calculator</title>
+  <style>
+    :root {
+      --bg: #0b1020;
+      --card: #141a2e;
+      --ink: #eaf0ff;
+      --muted: #9fb0d3;
+      --accent: #6ea8fe;
+      --danger: #ff6b6b;
+      --ok: #61d095;
+      --border: #263152;
+    }
+    * { box-sizing: border-box; }
+    html, body { height: 100%; }
+    body {
+      margin: 0;
+      font-family: ui-sans-serif, system-ui, -apple-system, Segoe UI, Roboto, Helvetica, Arial, "Apple Color Emoji", "Segoe UI Emoji";
+      background: radial-gradient(1200px 600px at 70% -10%, #1e2a52 0%, var(--bg) 45%), var(--bg);
+      color: var(--ink);
+      display: grid;
+      place-items: center;
+      padding: 24px;
+    }
+    .app {
+      width: min(920px, 100%);
+      background: linear-gradient(180deg, rgba(255,255,255,0.02), rgba(255,255,255,0.01));
+      border: 1px solid var(--border);
+      border-radius: 18px;
+      box-shadow: 0 20px 60px rgba(0,0,0,0.45), inset 0 1px 0 rgba(255,255,255,0.02);
+      overflow: clip;
+    }
+    header { padding: 20px 24px 0; }
+    header h1 {
+      font-size: clamp(20px, 3.2vw, 28px);
+      line-height: 1.15;
+      margin: 0;
+    }
+    header p { margin: 6px 0 0; color: var(--muted); font-size: 14px; }
+
+    .grid {
+      display: grid;
+      grid-template-columns: repeat(12, 1fr);
+      gap: 16px;
+      padding: 20px 24px 24px;
+    }
+    .card {
+      background: var(--card);
+      border: 1px solid var(--border);
+      border-radius: 14px;
+      padding: 16px;
+    }
+    .span-6 { grid-column: span 6; }
+    .span-12 { grid-column: span 12; }
+    @media (max-width: 720px) {
+      .span-6 { grid-column: span 12; }
+    }
+
+    label { display: block; font-size: 12px; color: var(--muted); margin-bottom: 6px; }
+    .row { display: grid; grid-template-columns: 1fr 1fr; gap: 12px; }
+
+    input[type="number"], select {
+      width: 100%;
+      padding: 12px 12px;
+      border-radius: 10px;
+      border: 1px solid var(--border);
+      background: #0f1430;
+      color: var(--ink);
+      font-size: 16px;
+    }
+
+    .controls { display: flex; flex-wrap: wrap; gap: 8px; align-items: center; }
+    button {
+      appearance: none;
+      border: 1px solid var(--border);
+      background: linear-gradient(180deg, #2a345f, #1a2346);
+      color: var(--ink);
+      padding: 10px 14px;
+      border-radius: 10px;
+      font-weight: 600;
+      cursor: pointer;
+      transition: transform .06s ease, filter .2s ease;
+    }
+    button:hover { filter: brightness(1.1); }
+    button:active { transform: translateY(1px); }
+    .ghost { background: transparent; }
+    .danger { background: linear-gradient(180deg, #6b2030, #421018); border-color: #5a1a26; }
+
+    .results { display: grid; grid-template-columns: 1fr 1fr; gap: 16px; margin-top: 10px; }
+    .result-box {
+      background: #0f1430;
+      border: 1px solid var(--border);
+      border-radius: 10px;
+      padding: 12px;
+      min-height: 64px;
+      display: grid;
+      gap: 4px;
+    }
+    .result-title { font-size: 12px; color: var(--muted); }
+    .result-value { font-size: 20px; font-variant-numeric: tabular-nums; }
+    .ok { color: var(--ok); }
+    .err { color: var(--danger); }
+
+    .equation { font-family: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, "Liberation Mono", "Courier New", monospace; }
+
+    .footer { padding: 12px 24px 22px; color: var(--muted); font-size: 12px; text-align: center; }
+    .badge { display:inline-block; padding:.2em .5em; border:1px solid var(--border); border-radius: 999px; margin-left:.4em; }
+  </style>
+</head>
+<body>
+  <main class="app" role="application" aria-labelledby="title">
+    <header>
+      <h1 id="title">Scale & Offset Calculator</h1>
+      <p>Given input low <strong>(x₁)</strong>, input high <strong>(x₂)</strong>, output low <strong>(y₁)</strong>, and output high <strong>(y₂)</strong>, computes:
+        <span class="badge">Scale m = (y₂ − y₁) / (x₂ − x₁)</span>
+        <span class="badge">Offset b = y₁ − m·x₁</span>
+      </p>
+    </header>
+
+    <section class="grid" id="grid">
+      <div class="card span-6">
+        <h2 style="margin:0 0 10px;font-size:16px">Inputs</h2>
+        <div class="row" style="margin-bottom:10px">
+          <div>
+            <label for="x1">Input low (x₁)</label>
+            <input id="x1" type="number" step="any" placeholder="e.g., 4" inputmode="decimal" />
+          </div>
+          <div>
+            <label for="x2">Input high (x₂)</label>
+            <input id="x2" type="number" step="any" placeholder="e.g., 20" inputmode="decimal" />
+          </div>
+        </div>
+        <div class="row" style="margin-bottom:10px">
+          <div>
+            <label for="y1">Output low (y₁)</label>
+            <input id="y1" type="number" step="any" placeholder="e.g., 0" inputmode="decimal" />
+          </div>
+          <div>
+            <label for="y2">Output high (y₂)</label>
+            <input id="y2" type="number" step="any" placeholder="e.g., 100" inputmode="decimal" />
+          </div>
+        </div>
+        <div class="controls" style="margin-top:6px">
+          <button id="calc">Calculate</button>
+          <button class="ghost" id="example">Use example</button>
+          <button class="ghost" id="reset">Reset</button>
+          <label for="decimals" style="margin-left:auto">Decimals</label>
+          <select id="decimals" title="Decimal places">
+            <option value="2">2</option>
+            <option value="4">4</option>
+            <option value="6" selected>6</option>
+            <option value="8">8</option>
+            <option value="12">12</option>
+          </select>
+        </div>
+        <p id="message" class="err" role="alert" aria-live="polite" style="min-height:1.2em;margin:8px 2px 0"></p>
+        <div class="results">
+          <div class="result-box">
+            <div class="result-title">Scale (m)</div>
+            <div class="result-value" id="scale">—</div>
+          </div>
+          <div class="result-box">
+            <div class="result-title">Offset (b)</div>
+            <div class="result-value" id="offset">—</div>
+          </div>
+          <div class="result-box span-12">
+            <div class="result-title">Mapping equation</div>
+            <div class="result-value equation" id="equation">y = m·x + b</div>
+          </div>
+          <div class="controls span-12">
+            <button id="copy">Copy results</button>
+            <span id="copied" style="font-size:12px;color:var(--muted)"></span>
+          </div>
+        </div>
+      </div>
+
+      <div class="card span-6">
+        <h2 style="margin:0 0 10px;font-size:16px">Quick test</h2>
+        <p style="margin:0 0 10px;color:var(--muted)">Try a value of <strong>x</strong> and see the mapped <strong>y</strong> using the current scale & offset.</p>
+        <div class="row" style="margin-bottom:10px">
+          <div>
+            <label for="xtest">Test x</label>
+            <input id="xtest" type="number" step="any" placeholder="e.g., 12" inputmode="decimal" />
+          </div>
+          <div>
+            <label for="ytest">Result y</label>
+            <input id="ytest" type="text" readonly aria-readonly="true" />
+          </div>
+        </div>
+        <div class="controls">
+          <button id="apply">Apply</button>
+          <button class="ghost" id="clearTest">Clear</button>
+        </div>
+      </div>
+
+      <div class="card span-12" style="background:linear-gradient(180deg,#111737,#0d1330)">
+        <h2 style="margin:0 0 10px;font-size:16px">Notes</h2>
+        <ul style="margin:0 0 0 18px; color: var(--muted); line-height:1.6">
+          <li>If x₂ equals x₁, scale is undefined (division by zero). Adjust inputs.</li>
+          <li>This uses exact arithmetic internally; displayed values are rounded to the selected decimal places.</li>
+          <li>Formulae: <span class="equation">m = (y₂ − y₁) / (x₂ − x₁)</span>, <span class="equation">b = y₁ − m·x₁</span>.</li>
+        </ul>
+      </div>
+    </section>
+
+    <div class="footer">Built for engineers & technicians • Keyboard friendly • No data leaves your browser</div>
+  </main>
+
+  <script>
+    const $ = (sel) => document.querySelector(sel);
+    const x1El = $('#x1'), x2El = $('#x2'), y1El = $('#y1'), y2El = $('#y2');
+    const scaleEl = $('#scale'), offsetEl = $('#offset'), eqEl = $('#equation');
+    const msgEl = $('#message'), decSel = $('#decimals');
+    const copyBtn = $('#copy'), copied = $('#copied');
+    const xtest = $('#xtest'), ytest = $('#ytest');
+
+    const parse = (el) => {
+      const v = el.value.trim();
+      if (v === '' || v === '-' || v === '+') return NaN;
+      const n = Number(v);
+      return Number.isFinite(n) ? n : NaN;
+    };
+    const fmt = (n) => {
+      const d = Number(decSel.value || 6);
+      if (!Number.isFinite(n)) return '—';
+      // Use toFixed for stable decimals; strip trailing zeros
+      return n.toFixed(d).replace(/\.0+$/,'').replace(/(\.\d*?)0+$/,'$1');
+    };
+
+    function compute() {
+      msgEl.textContent = '';
+      const x1 = parse(x1El), x2 = parse(x2El), y1 = parse(y1El), y2 = parse(y2El);
+      if ([x1,x2,y1,y2].some(v => Number.isNaN(v))) {
+        setOutputs(null, null);
+        return { m: NaN, b: NaN };
+      }
+      if (x1 === x2) {
+        msgEl.textContent = 'x₂ must not equal x₁ (division by zero).';
+        setOutputs(null, null);
+        return { m: NaN, b: NaN };
+      }
+      const m = (y2 - y1) / (x2 - x1);
+      const b = y1 - (m * x1);
+      setOutputs(m, b);
+      return { m, b };
+    }
+
+    function setOutputs(m, b) {
+      if (!Number.isFinite(m) || !Number.isFinite(b)) {
+        scaleEl.textContent = '—';
+        offsetEl.textContent = '—';
+        eqEl.textContent = 'y = m·x + b';
+        return;
+      }
+      scaleEl.textContent = fmt(m);
+      offsetEl.textContent = fmt(b);
+      eqEl.textContent = `y = ${fmt(m)}·x + ${fmt(b)}`;
+    }
+
+    function applyTest() {
+      const { m, b } = compute();
+      const x = parse(xtest);
+      if (!Number.isFinite(m) || !Number.isFinite(b) || Number.isNaN(x)) {
+        ytest.value = '';
+        return;
+      }
+      ytest.value = fmt(m * x + b);
+    }
+
+    function copyResults() {
+      const m = scaleEl.textContent;
+      const b = offsetEl.textContent;
+      if (!m || m === '—' || !b || b === '—') return;
+      const text = `Scale (m): ${m}\nOffset (b): ${b}\nEquation: y = ${m}·x + ${b}`;
+      const doLegacy = () => {
+        const ta = document.createElement('textarea');
+        ta.value = text; document.body.appendChild(ta); ta.select();
+        try { document.execCommand('copy'); } catch (e) {}
+        ta.remove();
+      };
+      if (navigator.clipboard && navigator.clipboard.writeText) {
+        navigator.clipboard.writeText(text).then(() => {
+          copied.textContent = 'Copied to clipboard!';
+          setTimeout(() => copied.textContent = '', 1600);
+        }).catch(() => { doLegacy(); });
+      } else { doLegacy(); }
+    }
+
+    function useExample() {
+      x1El.value = '4';
+      x2El.value = '20';
+      y1El.value = '0';
+      y2El.value = '100';
+      xtest.value = '12';
+      compute();
+      applyTest();
+    }
+
+    function resetAll() {
+      for (const el of [x1El,x2El,y1El,y2El,xtest]) el.value = '';
+      setOutputs(null, null);
+      ytest.value = '';
+      msgEl.textContent = '';
+      decSel.value = '6';
+      x1El.focus();
+    }
+
+    // Events
+    $('#calc').addEventListener('click', compute);
+    $('#apply').addEventListener('click', applyTest);
+    $('#clearTest').addEventListener('click', () => { xtest.value = ''; ytest.value = ''; });
+    $('#example').addEventListener('click', useExample);
+    $('#reset').addEventListener('click', resetAll);
+    decSel.addEventListener('change', compute);
+
+    for (const el of [x1El,x2El,y1El,y2El,xtest]) {
+      el.addEventListener('input', (e) => {
+        if (e.currentTarget === xtest) { applyTest(); }
+        else { compute(); if (xtest.value.trim() !== '') applyTest(); }
+      });
+      el.addEventListener('keydown', (e) => { if (e.key === 'Enter') compute(); });
+    }
+
+    copyBtn.addEventListener('click', copyResults);
+
+    // Persist last session (optional, lightweight)
+    const KEY = 'scale-offset-calc:v1';
+    function saveState() {
+      const state = { x1: x1El.value, x2: x2El.value, y1: y1El.value, y2: y2El.value, d: decSel.value };
+      try { localStorage.setItem(KEY, JSON.stringify(state)); } catch {}
+    }
+    function loadState() {
+      try {
+        const s = JSON.parse(localStorage.getItem(KEY) || '{}');
+        if (s) {
+          if (s.x1) x1El.value = s.x1; if (s.x2) x2El.value = s.x2;
+          if (s.y1) y1El.value = s.y1; if (s.y2) y2El.value = s.y2;
+          if (s.d) decSel.value = s.d;
+          compute();
+        }
+      } catch {}
+    }
+    document.addEventListener('input', saveState, { capture: true });
+    window.addEventListener('load', loadState);
+  </script>
+</body>
+</html>
