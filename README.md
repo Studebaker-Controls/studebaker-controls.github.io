@@ -1,5 +1,4 @@
-# studebaker-controls.github.io
-Studebaker Controls
+# Studebaker Controls
 
 This is a collection of utilities and calculators for the use of Studebaker technicians. 
 
