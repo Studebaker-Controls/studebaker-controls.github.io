@@ -1,0 +1,284 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>Dew Point Calculator</title>
+  <style>
+    :root {
+      --bg: #0b1020;
+      --card: #141a2e;
+      --ink: #eaf0ff;
+      --muted: #9fb0d3;
+      --accent: #6ea8fe;
+      --danger: #ff6b6b;
+      --ok: #61d095;
+      --border: #263152;
+      --hi: #1d2a57;
+      --hi-border: #4560a9;
+    }
+    * { box-sizing: border-box; }
+    html, body { height: 100%; }
+    body {
+      margin: 0;
+      font-family: ui-sans-serif, system-ui, -apple-system, Segoe UI, Roboto, Helvetica, Arial, "Apple Color Emoji", "Segoe UI Emoji";
+      background: radial-gradient(1200px 600px at 70% -10%, #1e2a52 0%, var(--bg) 45%), var(--bg);
+      color: var(--ink);
+      display: grid;
+      place-items: center;
+      padding: 24px;
+      -webkit-font-smoothing: antialiased;
+      -moz-osx-font-smoothing: grayscale;
+      -webkit-tap-highlight-color: transparent;
+    }
+    .app { width: min(980px, 100%); background: linear-gradient(180deg, rgba(255,255,255,0.02), rgba(255,255,255,0.01)); border: 1px solid var(--border); border-radius: 18px; box-shadow: 0 20px 60px rgba(0,0,0,0.45), inset 0 1px 0 rgba(255,255,255,0.02); overflow: clip; }
+    header { padding: 20px 24px 0; }
+    header h1 { font-size: clamp(20px, 3.2vw, 28px); line-height: 1.15; margin: 0; letter-spacing: .2px; }
+    header p { margin: 6px 0 0; color: var(--muted); font-size: 14px; display:flex; flex-wrap: wrap; gap:8px; }
+
+    .grid { display: grid; grid-template-columns: repeat(12, 1fr); gap: 16px; padding: 20px 24px 24px; }
+    .card { background: var(--card); border: 1px solid var(--border); border-radius: 14px; padding: 16px; }
+    .span-6 { grid-column: span 6; } .span-12 { grid-column: span 12; }
+
+    label { display: block; font-size: 12px; color: var(--muted); margin-bottom: 6px; }
+    .row { display: grid; grid-template-columns: 1fr 1fr; gap: 12px; }
+
+    input[type="number"], select { width: 100%; padding: 14px 14px; border-radius: 12px; border: 1px solid var(--border); background: #0f1430; color: var(--ink); font-size: 17px; line-height: 1.25; }
+
+    .controls { display: flex; flex-wrap: wrap; gap: 8px; align-items: center; }
+    button { appearance: none; border: 1px solid var(--border); background: linear-gradient(180deg, #2a345f, #1a2346); color: var(--ink); padding: 12px 14px; border-radius: 12px; font-weight: 600; cursor: pointer; transition: transform .06s ease, filter .2s ease; touch-action: manipulation; }
+    button:hover { filter: brightness(1.1); } button:active { transform: translateY(1px); }
+    .ghost { background: transparent; }
+
+    .results { display: grid; grid-template-columns: 1fr 1fr; gap: 16px; margin-top: 10px; }
+    .result-box { background: #0f1430; border: 1px solid var(--border); border-radius: 12px; padding: 12px; min-height: 64px; display: grid; gap: 4px; }
+    .result-title { font-size: 12px; color: var(--muted); }
+    .result-value { font-size: clamp(18px, 5vw, 20px); font-variant-numeric: tabular-nums; word-break: break-word; }
+    .equation { font-family: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, "Liberation Mono", monospace; }
+
+    table { width: 100%; border-collapse: collapse; }
+    th, td { border: 1px solid var(--border); padding: 8px 10px; text-align: right; }
+    th { color: var(--muted); font-weight: 600; }
+    td:first-child, th:first-child { text-align: left; }
+    tbody tr.hi { background: var(--hi); }
+    tbody tr.hi td { border-color: var(--hi-border); }
+
+    .badge { display:inline-block; padding:.2em .5em; border:1px solid var(--border); border-radius: 999px; }
+
+    /* Mobile tweaks */
+    @media (max-width: 720px) {
+      body { padding: 16px; }
+      .grid { padding: 16px; gap: 12px; }
+      .row { grid-template-columns: 1fr; }
+      .span-6 { grid-column: span 12; }
+      .controls > button { flex: 1 1 auto; }
+      #decimals { flex: 1 1 auto; }
+      header p { font-size: 13px; }
+    }
+    @media (max-width: 420px) { header { padding-top: 16px; } .card { padding: 14px; } .result-value { font-size: clamp(16px, 6vw, 20px); } }
+  </style>
+</head>
+<body>
+  <main class="app" role="application" aria-labelledby="title">
+    <header>
+      <h1 id="title">Dew Point Calculator</h1>
+      <p>
+        <span class="badge">Inputs: space temperature & relative humidity</span>
+        <span class="badge">Returns: dew point</span>
+      </p>
+    </header>
+
+    <section class="grid">
+      <!-- Inputs & Result -->
+      <div class="card span-6">
+        <h2 style="margin:0 0 10px;font-size:16px">Inputs</h2>
+        <div class="row" style="margin-bottom:10px">
+          <div>
+            <label for="temp">Space temperature</label>
+            <input id="temp" type="number" step="any" placeholder="e.g., 75" inputmode="decimal" />
+          </div>
+          <div>
+            <label for="unit">Units</label>
+            <select id="unit" title="Temperature units">
+              <option value="F" selected>°F</option>
+              <option value="C">°C</option>
+            </select>
+          </div>
+        </div>
+        <div class="row" style="margin-bottom:10px">
+          <div>
+            <label for="rh">Relative humidity (%)</label>
+            <input id="rh" type="number" step="any" placeholder="e.g., 50" inputmode="decimal" />
+          </div>
+          <div>
+            <label for="decimals">Decimals</label>
+            <select id="decimals" title="Decimal places">
+              <option value="1">1</option>
+              <option value="2" selected>2</option>
+              <option value="3">3</option>
+              <option value="4">4</option>
+            </select>
+          </div>
+        </div>
+        <div class="controls" style="margin-top:6px">
+          <button class="ghost" id="example">Use example</button>
+          <button class="ghost" id="reset">Reset</button>
+        </div>
+        <p id="message" class="equation" role="alert" aria-live="polite" style="min-height:1.2em;margin:8px 2px 0;color:var(--danger)"></p>
+        <div class="results">
+          <div class="result-box span-12">
+            <div class="result-title">Dew point</div>
+            <div class="result-value" id="dewpoint">—</div>
+          </div>
+          <div class="result-box span-12">
+            <div class="result-title">Formula</div>
+            <div class="result-value equation">γ = ln(RH/100) + a·T/(b+T),&nbsp; T<sub>d</sub> = b·γ/(a−γ)</div>
+          </div>
+        </div>
+      </div>
+
+      <!-- Table -->
+      <div class="card span-6">
+        <h2 style="margin:0 0 10px;font-size:16px">Dew point table</h2>
+        <p style="margin:0 0 10px;color:var(--muted)">At the same temperature, for a range of RH values. The row nearest your RH is highlighted.</p>
+        <div class="row" style="margin-bottom:10px">
+          <div>
+            <label for="step">RH step (%)</label>
+            <select id="step">
+              <option>5</option>
+              <option selected>10</option>
+              <option>20</option>
+              <option>25</option>
+            </select>
+          </div>
+        </div>
+        <div class="result-box span-12" style="padding:0">
+          <table id="table">
+            <thead><tr><th>RH (%)</th><th>Dew point</th></tr></thead>
+            <tbody>
+              <tr><td colspan="2" style="text-align:center;color:var(--muted);padding:16px">No data yet</td></tr>
+            </tbody>
+          </table>
+        </div>
+      </div>
+
+      <div class="card span-12" style="background:linear-gradient(180deg,#111737,#0d1330)">
+        <h2 style="margin:0 0 10px;font-size:16px">Notes</h2>
+        <ul style="margin:0 0 0 18px; color: var(--muted); line-height:1.6">
+          <li>Uses Magnus–Tetens approximation with a = 17.625, b = 243.04°C. Calculation is performed in °C internally.</li>
+          <li>Valid for typical indoor conditions. RH must be between 0 and 100.</li>
+          <li>Tip: Lower RH or temperature reduces dew point and condensation risk.</li>
+        </ul>
+      </div>
+    </section>
+  </main>
+
+  <script>
+    const $ = (s) => document.querySelector(s);
+    const tempEl = $('#temp');
+    const unitEl = $('#unit');
+    const rhEl = $('#rh');
+    const dpEl = $('#dewpoint');
+    const decSel = $('#decimals');
+    const stepSel = $('#step');
+    const msgEl = $('#message');
+    const tableBody = $('#table tbody');
+
+    const A = 17.625, B = 243.04; // Magnus constants (Celsius)
+
+    const toC = (t, u) => u === 'F' ? (t - 32) * 5/9 : t;
+    const fromC = (tC, u) => u === 'F' ? (tC * 9/5) + 32 : tC;
+
+    const fmt = (n) => {
+      const d = Number(decSel.value || 2);
+      if (!Number.isFinite(n)) return '—';
+      return n.toFixed(d).replace(/\.0+$/,'').replace(/(\.\d*?)0+$/,'$1');
+    };
+
+    function dewPointC(tempC, rhPct) {
+      const RH = Math.max(0, Math.min(100, rhPct)) / 100;
+      const gamma = Math.log(RH) + (A * tempC) / (B + tempC);
+      return (B * gamma) / (A - gamma);
+    }
+
+    function compute() {
+      msgEl.textContent = '';
+      const t = Number(tempEl.value.trim());
+      const rh = Number(rhEl.value.trim());
+      if (!Number.isFinite(t) || !Number.isFinite(rh)) { dpEl.textContent = '—'; return; }
+      if (rh < 0 || rh > 100) { msgEl.textContent = 'RH must be between 0 and 100%'; dpEl.textContent = '—'; return; }
+      const tC = toC(t, unitEl.value);
+      const dpC = dewPointC(tC, rh);
+      const dp = fromC(dpC, unitEl.value);
+      dpEl.textContent = `${fmt(dp)} °${unitEl.value}`;
+    }
+
+    function generateTable() {
+      tableBody.innerHTML = '';
+      const t = Number(tempEl.value.trim());
+      if (!Number.isFinite(t)) { tableBody.innerHTML = `<tr><td colspan="2" style="text-align:center;color:var(--muted);padding:16px">Enter a temperature first</td></tr>`; return; }
+      const step = Number(stepSel.value);
+      const u = unitEl.value;
+      const tC = toC(t, u);
+      const rhVal = Number(rhEl.value.trim());
+      const target = Number.isFinite(rhVal) ? Math.max(0, Math.min(100, Math.round(rhVal / step) * step)) : null;
+      const rows = [];
+      for (let rh = 0; rh <= 100; rh += step) {
+        const dp = fromC(dewPointC(tC, rh), u);
+        const cls = (target !== null && rh === target) ? ' class="hi"' : '';
+        rows.push(`<tr${cls}><td>${rh}</td><td style="text-align:right">${fmt(dp)} °${u}</td></tr>`);
+      }
+      tableBody.innerHTML = rows.join('');
+    }
+
+    function useExample() {
+      unitEl.value = 'F';
+      tempEl.value = '75';
+      rhEl.value = '50';
+      onTempOrFormatChange();
+      compute();
+    }
+
+    function resetAll() {
+      tempEl.value = '';
+      rhEl.value = '';
+      dpEl.textContent = '—';
+      tableBody.innerHTML = '<tr><td colspan="2" style="text-align:center;color:var(--muted);padding:16px">No data yet</td></tr>';
+      msgEl.textContent = '';
+      decSel.value = '2';
+      stepSel.value = '10';
+      tempEl.focus();
+    }
+
+    // Auto-calc & auto-generate
+    function onTempOrFormatChange() { compute(); generateTable(); }
+
+    tempEl.addEventListener('input', onTempOrFormatChange);
+    unitEl.addEventListener('input', onTempOrFormatChange);
+    decSel.addEventListener('input', onTempOrFormatChange);
+    stepSel.addEventListener('input', generateTable);
+    rhEl.addEventListener('input', () => { compute(); generateTable(); });
+
+    $('#example').addEventListener('click', useExample);
+    $('#reset').addEventListener('click', resetAll);
+
+    // Persist minimal state
+    const KEY = 'dewpoint-calc:v1';
+    function saveState() {
+      const state = { t: tempEl.value, u: unitEl.value, rh: rhEl.value, d: decSel.value, s: stepSel.value };
+      try { localStorage.setItem(KEY, JSON.stringify(state)); } catch {}
+    }
+    function loadState() {
+      try {
+        const s = JSON.parse(localStorage.getItem(KEY) || '{}');
+        if (s) {
+          if (s.t) tempEl.value = s.t; if (s.u) unitEl.value = s.u; if (s.rh) rhEl.value = s.rh; if (s.d) decSel.value = s.d; if (s.s) stepSel.value = s.s;
+          onTempOrFormatChange();
+        }
+      } catch {}
+    }
+    document.addEventListener('input', saveState, { capture: true });
+    window.addEventListener('load', loadState);
+  </script>
+</body>
+</html>
