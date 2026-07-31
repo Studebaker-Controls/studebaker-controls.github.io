@@ -1,0 +1,629 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>JSON Tree Viewer</title>
+  <style>
+    :root {
+      color-scheme: light dark;
+      --bg: #0f172a;
+      --panel: #111827;
+      --panel-2: #1f2937;
+      --border: #334155;
+      --text: #e5e7eb;
+      --muted: #94a3b8;
+      --accent: #38bdf8;
+      --accent-hover: #0ea5e9;
+      --danger: #f87171;
+      --success: #4ade80;
+      --key: #7dd3fc;
+      --string: #86efac;
+      --number: #fcd34d;
+      --boolean: #c4b5fd;
+      --null: #fca5a5;
+      --shadow: 0 12px 35px rgba(0, 0, 0, 0.28);
+    }
+
+    * {
+      box-sizing: border-box;
+    }
+
+    body {
+      margin: 0;
+      min-height: 100vh;
+      background:
+        radial-gradient(circle at top right, rgba(56, 189, 248, 0.12), transparent 35%),
+        var(--bg);
+      color: var(--text);
+      font-family: Inter, ui-sans-serif, system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
+    }
+
+    .app {
+      width: min(1400px, 96vw);
+      margin: 0 auto;
+      padding: 28px 0 40px;
+    }
+
+    .header {
+      margin-bottom: 18px;
+    }
+
+    h1 {
+      margin: 0 0 6px;
+      font-size: clamp(1.8rem, 3vw, 2.6rem);
+      letter-spacing: -0.03em;
+    }
+
+    .subtitle {
+      margin: 0;
+      color: var(--muted);
+    }
+
+    .toolbar {
+      display: flex;
+      flex-wrap: wrap;
+      gap: 10px;
+      margin: 18px 0;
+    }
+
+    button {
+      border: 1px solid var(--border);
+      border-radius: 9px;
+      padding: 10px 14px;
+      background: var(--panel-2);
+      color: var(--text);
+      font: inherit;
+      font-weight: 700;
+      cursor: pointer;
+      transition: 0.16s ease;
+    }
+
+    button:hover {
+      transform: translateY(-1px);
+      border-color: var(--accent);
+    }
+
+    button.primary {
+      background: var(--accent);
+      color: #082f49;
+      border-color: var(--accent);
+    }
+
+    button.primary:hover {
+      background: var(--accent-hover);
+      color: white;
+    }
+
+    .layout {
+      display: grid;
+      grid-template-columns: minmax(320px, 0.9fr) minmax(360px, 1.1fr);
+      gap: 18px;
+      min-height: 68vh;
+    }
+
+    .panel {
+      display: flex;
+      flex-direction: column;
+      min-height: 0;
+      background: rgba(17, 24, 39, 0.95);
+      border: 1px solid var(--border);
+      border-radius: 14px;
+      overflow: hidden;
+      box-shadow: var(--shadow);
+    }
+
+    .panel-header {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      gap: 12px;
+      padding: 13px 16px;
+      background: rgba(31, 41, 55, 0.85);
+      border-bottom: 1px solid var(--border);
+      font-weight: 800;
+    }
+
+    .status {
+      font-size: 0.88rem;
+      color: var(--muted);
+      font-weight: 700;
+    }
+
+    .status.valid {
+      color: var(--success);
+    }
+
+    .status.invalid {
+      color: var(--danger);
+    }
+
+    .editor {
+      display: grid;
+      grid-template-columns: auto minmax(0, 1fr);
+      flex: 1;
+      min-height: 520px;
+      overflow: hidden;
+    }
+
+    .line-numbers {
+      min-width: 52px;
+      padding: 18px 12px 18px 8px;
+      overflow: hidden;
+      border-right: 1px solid var(--border);
+      background: rgba(15, 23, 42, 0.55);
+      color: #64748b;
+      text-align: right;
+      user-select: none;
+      white-space: pre;
+      font: 14px/1.55 "Cascadia Code", "SFMono-Regular", Consolas, "Liberation Mono", monospace;
+    }
+
+    textarea {
+      width: 100%;
+      height: 100%;
+      min-height: 520px;
+      resize: none;
+      border: 0;
+      outline: 0;
+      padding: 18px;
+      overflow: auto;
+      background: transparent;
+      color: var(--text);
+      font: 14px/1.55 "Cascadia Code", "SFMono-Regular", Consolas, "Liberation Mono", monospace;
+      tab-size: 2;
+      white-space: pre;
+    }
+
+    .tree-wrap {
+      flex: 1;
+      overflow: auto;
+      padding: 16px;
+      font: 14px/1.55 "Cascadia Code", "SFMono-Regular", Consolas, "Liberation Mono", monospace;
+    }
+
+    .placeholder {
+      color: var(--muted);
+      font-family: Inter, ui-sans-serif, system-ui, sans-serif;
+    }
+
+    .error-box {
+      display: none;
+      margin: 0 16px 16px;
+      padding: 12px 14px;
+      border: 1px solid rgba(248, 113, 113, 0.45);
+      border-radius: 10px;
+      background: rgba(127, 29, 29, 0.24);
+      color: #fecaca;
+      white-space: pre-wrap;
+      font: 13px/1.45 "Cascadia Code", Consolas, monospace;
+    }
+
+    .error-box.show {
+      display: block;
+    }
+
+    .node {
+      position: relative;
+      margin-left: 18px;
+    }
+
+    .node.root {
+      margin-left: 0;
+    }
+
+    .node-row {
+      display: flex;
+      align-items: flex-start;
+      min-height: 24px;
+      white-space: nowrap;
+    }
+
+    .toggle {
+      width: 18px;
+      height: 22px;
+      margin-right: 2px;
+      border: 0;
+      padding: 0;
+      background: transparent;
+      color: var(--muted);
+      line-height: 22px;
+      font-size: 12px;
+      transform: none;
+    }
+
+    .toggle:hover {
+      color: var(--accent);
+      border: 0;
+      transform: none;
+    }
+
+    .spacer {
+      display: inline-block;
+      width: 20px;
+      flex: 0 0 20px;
+    }
+
+    .key {
+      color: var(--key);
+    }
+
+    .string {
+      color: var(--string);
+    }
+
+    .number {
+      color: var(--number);
+    }
+
+    .boolean {
+      color: var(--boolean);
+    }
+
+    .null {
+      color: var(--null);
+      font-style: italic;
+    }
+
+    .type-summary {
+      color: var(--muted);
+      margin-left: 6px;
+    }
+
+    .children {
+      border-left: 1px dashed rgba(148, 163, 184, 0.35);
+      margin-left: 8px;
+      padding-left: 4px;
+    }
+
+    .collapsed > .children {
+      display: none;
+    }
+
+    .footer-note {
+      margin-top: 14px;
+      color: var(--muted);
+      font-size: 0.88rem;
+    }
+
+    @media (max-width: 850px) {
+      .layout {
+        grid-template-columns: 1fr;
+      }
+
+      .editor,
+      textarea {
+        min-height: 360px;
+      }
+
+      .tree-wrap {
+        min-height: 360px;
+      }
+    }
+  </style>
+</head>
+<body>
+  <main class="app">
+    <header class="header">
+      <h1>JSON Tree Viewer</h1>
+      <p class="subtitle">Paste JSON, validate it, and explore the result as an expandable tree.</p>
+    </header>
+
+    <div class="toolbar">
+      <button class="primary" id="renderBtn">Validate &amp; Render</button>
+      <button id="formatBtn">Format JSON</button>
+      <button id="minifyBtn">Minify JSON</button>
+      <button id="expandBtn">Expand All</button>
+      <button id="collapseBtn">Collapse All</button>
+      <button id="clearBtn">Clear</button>
+    </div>
+
+    <section class="layout">
+      <div class="panel">
+        <div class="panel-header">
+          <span>JSON Input</span>
+          <span class="status" id="inputStatus">Ready</span>
+        </div>
+        <div class="editor">
+          <div class="line-numbers" id="lineNumbers" aria-hidden="true">1</div>
+          <textarea id="jsonInput" spellcheck="false" aria-label="JSON input">{
+  "name": "JSON Tree Viewer",
+  "active": true,
+  "version": 1,
+  "features": [
+    "validation",
+    "expandable nodes",
+    "formatting"
+  ],
+  "settings": {
+    "theme": "dark",
+    "maxDepth": null
+  }
+}</textarea>
+        </div>
+        <div class="error-box" id="errorBox" role="alert"></div>
+      </div>
+
+      <div class="panel">
+        <div class="panel-header">
+          <span>Tree View</span>
+          <span class="status" id="treeStatus">Not rendered</span>
+        </div>
+        <div class="tree-wrap" id="tree">
+          <div class="placeholder">Click “Validate &amp; Render” to display the JSON tree.</div>
+        </div>
+      </div>
+    </section>
+
+    <p class="footer-note">Tip: Press Ctrl + Enter to validate and render.</p>
+  </main>
+
+  <script>
+    const input = document.getElementById("jsonInput");
+    const lineNumbers = document.getElementById("lineNumbers");
+    const tree = document.getElementById("tree");
+    let validationTimer;
+    const errorBox = document.getElementById("errorBox");
+    const inputStatus = document.getElementById("inputStatus");
+    const treeStatus = document.getElementById("treeStatus");
+
+    function escapeHtml(value) {
+      return String(value)
+        .replaceAll("&", "&amp;")
+        .replaceAll("<", "&lt;")
+        .replaceAll(">", "&gt;")
+        .replaceAll('"', "&quot;")
+        .replaceAll("'", "&#039;");
+    }
+
+    function updateLineNumbers() {
+      const count = Math.max(1, input.value.split("\n").length);
+      lineNumbers.textContent = Array.from({ length: count }, (_, index) => index + 1).join("\n");
+      lineNumbers.scrollTop = input.scrollTop;
+    }
+
+    function scheduleRender() {
+      clearTimeout(validationTimer);
+      validationTimer = setTimeout(render, 180);
+    }
+
+    function parseJson() {
+      const text = input.value.trim();
+
+      if (!text) {
+        throw new Error("JSON input is empty.");
+      }
+
+      try {
+        return JSON.parse(text);
+      } catch (error) {
+        const message = error instanceof Error ? error.message : String(error);
+        throw new Error(buildDetailedError(message, text));
+      }
+    }
+
+    function buildDetailedError(message, text) {
+      const positionMatch = message.match(/position\s+(\d+)/i);
+      const lineColumnMatch = message.match(/line\s+(\d+)\s+column\s+(\d+)/i);
+
+      let line = null;
+      let column = null;
+
+      if (positionMatch) {
+        const position = Number(positionMatch[1]);
+        const before = text.slice(0, position);
+        const lines = before.split("\n");
+        line = lines.length;
+        column = lines[lines.length - 1].length + 1;
+      } else if (lineColumnMatch) {
+        line = Number(lineColumnMatch[1]);
+        column = Number(lineColumnMatch[2]);
+      }
+
+      if (!line) {
+        return message;
+      }
+
+      const lines = text.split("\n");
+      const sourceLine = lines[line - 1] ?? "";
+      const pointer = " ".repeat(Math.max(0, column - 1)) + "^";
+
+      return `${message}\nLine ${line}, column ${column}\n\n${sourceLine}\n${pointer}`;
+    }
+
+    function setError(message) {
+      errorBox.textContent = message;
+      errorBox.classList.add("show");
+      inputStatus.textContent = "Invalid JSON";
+      inputStatus.className = "status invalid";
+      treeStatus.textContent = "Error";
+      treeStatus.className = "status invalid";
+      tree.innerHTML = '<div class="placeholder">Fix the JSON error and try again.</div>';
+    }
+
+    function clearError() {
+      errorBox.textContent = "";
+      errorBox.classList.remove("show");
+      inputStatus.textContent = "Valid JSON";
+      inputStatus.className = "status valid";
+      treeStatus.textContent = "Rendered";
+      treeStatus.className = "status valid";
+    }
+
+    function primitiveHtml(value) {
+      if (value === null) {
+        return '<span class="null">null</span>';
+      }
+
+      switch (typeof value) {
+        case "string":
+          return `<span class="string">"${escapeHtml(value)}"</span>`;
+        case "number":
+          return `<span class="number">${escapeHtml(value)}</span>`;
+        case "boolean":
+          return `<span class="boolean">${value}</span>`;
+        default:
+          return `<span>${escapeHtml(value)}</span>`;
+      }
+    }
+
+    function createNode(value, key = null, isRoot = false) {
+      const container = document.createElement("div");
+      container.className = `node${isRoot ? " root" : ""}`;
+
+      const row = document.createElement("div");
+      row.className = "node-row";
+
+      const isContainer = value !== null && typeof value === "object";
+      const keyHtml = key !== null ? `<span class="key">"${escapeHtml(key)}"</span>: ` : "";
+
+      if (isContainer) {
+        const entries = Array.isArray(value)
+          ? value.map((item, index) => [String(index), item])
+          : Object.entries(value);
+
+        const toggle = document.createElement("button");
+        toggle.className = "toggle";
+        toggle.type = "button";
+        toggle.textContent = "▼";
+        toggle.title = "Collapse node";
+        row.appendChild(toggle);
+
+        const summary = document.createElement("span");
+        const bracketOpen = Array.isArray(value) ? "[" : "{";
+        const label = Array.isArray(value)
+          ? `${entries.length} item${entries.length === 1 ? "" : "s"}`
+          : `${entries.length} propert${entries.length === 1 ? "y" : "ies"}`;
+
+        summary.innerHTML = `${keyHtml}${bracketOpen}<span class="type-summary">${label}</span>`;
+        row.appendChild(summary);
+        container.appendChild(row);
+
+        const children = document.createElement("div");
+        children.className = "children";
+
+        for (const [childKey, childValue] of entries) {
+          children.appendChild(createNode(childValue, childKey));
+        }
+
+        const closing = document.createElement("div");
+        closing.className = "node-row";
+        closing.innerHTML = `<span class="spacer"></span>${Array.isArray(value) ? "]" : "}"}`;
+        children.appendChild(closing);
+
+        container.appendChild(children);
+
+        toggle.addEventListener("click", () => {
+          const collapsed = container.classList.toggle("collapsed");
+          toggle.textContent = collapsed ? "▶" : "▼";
+          toggle.title = collapsed ? "Expand node" : "Collapse node";
+        });
+      } else {
+        const spacer = document.createElement("span");
+        spacer.className = "spacer";
+        row.appendChild(spacer);
+
+        const content = document.createElement("span");
+        content.innerHTML = `${keyHtml}${primitiveHtml(value)}`;
+        row.appendChild(content);
+        container.appendChild(row);
+      }
+
+      return container;
+    }
+
+    function render() {
+      try {
+        const data = parseJson();
+        clearError();
+        tree.innerHTML = "";
+        tree.appendChild(createNode(data, null, true));
+      } catch (error) {
+        setError(error instanceof Error ? error.message : String(error));
+      }
+    }
+
+    function formatJson() {
+      try {
+        const data = parseJson();
+        input.value = JSON.stringify(data, null, 2);
+        updateLineNumbers();
+        render();
+      } catch (error) {
+        setError(error instanceof Error ? error.message : String(error));
+      }
+    }
+
+    function minifyJson() {
+      try {
+        const data = parseJson();
+        input.value = JSON.stringify(data);
+        updateLineNumbers();
+        render();
+      } catch (error) {
+        setError(error instanceof Error ? error.message : String(error));
+      }
+    }
+
+    function setAllCollapsed(collapsed) {
+      const nodes = tree.querySelectorAll(".node");
+      nodes.forEach(node => {
+        if (!node.querySelector(":scope > .children")) return;
+
+        node.classList.toggle("collapsed", collapsed);
+        const toggle = node.querySelector(":scope > .node-row > .toggle");
+        if (toggle) {
+          toggle.textContent = collapsed ? "▶" : "▼";
+          toggle.title = collapsed ? "Expand node" : "Collapse node";
+        }
+      });
+    }
+
+    document.getElementById("renderBtn").addEventListener("click", render);
+    document.getElementById("formatBtn").addEventListener("click", formatJson);
+    document.getElementById("minifyBtn").addEventListener("click", minifyJson);
+    document.getElementById("expandBtn").addEventListener("click", () => setAllCollapsed(false));
+    document.getElementById("collapseBtn").addEventListener("click", () => setAllCollapsed(true));
+    document.getElementById("clearBtn").addEventListener("click", () => {
+      input.value = "";
+      updateLineNumbers();
+      tree.innerHTML = '<div class="placeholder">Click “Validate &amp; Render” to display the JSON tree.</div>';
+      errorBox.classList.remove("show");
+      errorBox.textContent = "";
+      inputStatus.textContent = "Ready";
+      inputStatus.className = "status";
+      treeStatus.textContent = "Not rendered";
+      treeStatus.className = "status";
+      input.focus();
+    });
+
+    input.addEventListener("input", () => {
+      updateLineNumbers();
+      scheduleRender();
+    });
+
+    input.addEventListener("scroll", () => {
+      lineNumbers.scrollTop = input.scrollTop;
+    });
+
+    input.addEventListener("keydown", event => {
+      if ((event.ctrlKey || event.metaKey) && event.key === "Enter") {
+        event.preventDefault();
+        render();
+      }
+
+      if (event.key === "Tab") {
+        event.preventDefault();
+        const start = input.selectionStart;
+        const end = input.selectionEnd;
+        input.setRangeText("  ", start, end, "end");
+        updateLineNumbers();
+        scheduleRender();
+      }
+    });
+
+    updateLineNumbers();
+    render();
+  </script>
+</body>
+</html>
