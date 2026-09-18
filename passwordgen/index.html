@@ -1,0 +1,151 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Password Generator</title>
+<style>
+  * { box-sizing: border-box; }
+  body {
+    margin: 0;
+    min-height: 100vh;
+    display: grid;
+    place-items: center;
+    font-family: Inter, ui-sans-serif, system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
+    background: radial-gradient(circle at top, #1c2a45 0, #0b1020 45%, #060914 100%);
+    color: #fff;
+  }
+  .card {
+    width: min(92vw, 620px);
+    padding: 42px;
+    border: 1px solid rgba(255,255,255,.12);
+    border-radius: 24px;
+    background: rgba(255,255,255,.07);
+    box-shadow: 0 24px 80px rgba(0,0,0,.35);
+    backdrop-filter: blur(16px);
+    text-align: center;
+  }
+  h1 { margin: 0 0 8px; font-size: clamp(28px, 5vw, 42px); }
+  .sub { margin: 0 0 30px; color: #aeb8cd; }
+  .password-wrap {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    padding: 12px 12px 12px 20px;
+    border-radius: 16px;
+    background: rgba(0,0,0,.28);
+    border: 1px solid rgba(255,255,255,.1);
+  }
+  #password {
+    flex: 1;
+    min-width: 0;
+    font: 700 clamp(19px, 4vw, 29px)/1.2 ui-monospace, SFMono-Regular, Menlo, Consolas, monospace;
+    letter-spacing: .06em;
+    overflow-wrap: anywhere;
+    text-align: left;
+  }
+  button {
+    border: 0;
+    cursor: pointer;
+    font: inherit;
+    font-weight: 700;
+    transition: transform .12s ease, filter .12s ease;
+  }
+  button:active { transform: scale(.97); }
+  .copy {
+    padding: 12px 16px;
+    border-radius: 11px;
+    color: #e9efff;
+    background: rgba(255,255,255,.12);
+  }
+  .generate {
+    width: 100%;
+    margin-top: 18px;
+    padding: 16px 20px;
+    border-radius: 14px;
+    background: #fff;
+    color: #101525;
+    font-size: 17px;
+  }
+  button:hover { filter: brightness(1.08); }
+  .status { min-height: 22px; margin-top: 14px; color: #91e5b7; font-size: 14px; }
+</style>
+</head>
+<body>
+  <main class="card">
+    <h1>Password Generator</h1>
+    <p class="sub">Generates one random 15-character password.</p>
+    <div class="password-wrap">
+      <div id="password" aria-live="polite"></div>
+      <button class="copy" id="copyBtn" type="button">Copy</button>
+    </div>
+    <button class="generate" id="generateBtn" type="button">Generate New Password</button>
+    <div class="status" id="status" aria-live="polite"></div>
+  </main>
+
+<script>
+(() => {
+  const LETTERS = 'ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz';
+  const NUMBERS = '0123456789';
+  const SYMBOLS = '!@#$%^&*()-_=+[]{};:,.?';
+  const LENGTH = 15;
+
+  // Cryptographically secure unbiased integer in [0, max).
+  function randomInt(max) {
+    if (!Number.isSafeInteger(max) || max <= 0) throw new Error('Invalid max');
+    const limit = Math.floor(0x100000000 / max) * max;
+    const buf = new Uint32Array(1);
+    do crypto.getRandomValues(buf); while (buf[0] >= limit);
+    return buf[0] % max;
+  }
+
+  function randomChar(chars) {
+    return chars[randomInt(chars.length)];
+  }
+
+  function shuffle(array) {
+    for (let i = array.length - 1; i > 0; i--) {
+      const j = randomInt(i + 1);
+      [array[i], array[j]] = [array[j], array[i]];
+    }
+    return array;
+  }
+
+  function generatePassword() {
+    // Start with one of each category, then randomly assign the remaining
+    // 12 positions. This makes the category counts random on every generation.
+    const categories = [LETTERS, NUMBERS, SYMBOLS];
+    const chars = [randomChar(LETTERS), randomChar(NUMBERS), randomChar(SYMBOLS)];
+
+    for (let i = chars.length; i < LENGTH; i++) {
+      const category = categories[randomInt(categories.length)];
+      chars.push(randomChar(category));
+    }
+
+    return shuffle(chars).join('');
+  }
+
+  const passwordEl = document.getElementById('password');
+  const statusEl = document.getElementById('status');
+
+  function renderPassword() {
+    passwordEl.textContent = generatePassword();
+    statusEl.textContent = '';
+  }
+
+  document.getElementById('generateBtn').addEventListener('click', renderPassword);
+  document.getElementById('copyBtn').addEventListener('click', async () => {
+    try {
+      await navigator.clipboard.writeText(passwordEl.textContent);
+      statusEl.textContent = 'Copied to clipboard';
+      setTimeout(() => statusEl.textContent = '', 1500);
+    } catch {
+      statusEl.textContent = 'Could not copy automatically';
+    }
+  });
+
+  renderPassword();
+})();
+</script>
+</body>
+</html>

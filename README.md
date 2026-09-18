@@ -4,3 +4,4 @@ This is a collection of utilities and calculators for the use of Studebaker tech
 
 - [Calculators](./calculators)
 - [JSON Viewer](./jsonviewer)
+- [Password Generator](./passwordgen)
